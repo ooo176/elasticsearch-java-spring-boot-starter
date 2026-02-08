@@ -1,6 +1,6 @@
 # Spring Boot Starter for Elasticsearch
 
-[![](https://jitpack.io/v/ooo176/spring-boot-starter-elasticsearch.svg)](https://jitpack.io/#ooo176/spring-boot-starter-elasticsearch)
+[![](https://jitpack.io/v/ooo176/elasticsearch-java-spring-boot-starter.svg)](https://jitpack.io/#ooo176/elasticsearch-java-spring-boot-starter)
 
 一个基于 Elasticsearch Java API Client 7.17.7 的 Spring Boot Starter，提供简单易用的 Elasticsearch 操作封装，支持索引管理、文档 CRUD、搜索查询、聚合统计等功能。
 
