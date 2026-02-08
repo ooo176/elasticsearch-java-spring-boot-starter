@@ -4,6 +4,8 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import lombok.extern.slf4j.Slf4j;
+import ooo.github.io.es.config.ElasticsearchProperties;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -11,12 +13,13 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.util.StringUtils;
 
 import java.util.Objects;
 
@@ -26,30 +29,20 @@ import java.util.Objects;
  *
  * @author qinkai
  */
+@Slf4j
 @Configuration
-@ConditionalOnExpression("#{'${elasticsearch.version}'.equals('7.17.7') }")
+@ConditionalOnProperty(name = "elasticsearch.version")
+@EnableConfigurationProperties(ElasticsearchProperties.class)
 @ComponentScan("ooo.github.io.es")
 public class ElasticsearchAutoConfiguration {
 
     private static final String DEFAULT_STR = "-1";
 
-    @Value("${elasticsearch.host}")
-    public String host;
+    private final ElasticsearchProperties properties;
 
-    @Value("${elasticsearch.port:9200}")
-    public Integer port;
-
-    @Value("${elasticsearch.username:-1}")
-    public String username;
-
-    @Value("${elasticsearch.password:-1}")
-    public String password;
-
-    @Value("${elasticsearch.connectTimeout:5000}")
-    public Integer connectTimeout;
-
-    @Value("${elasticsearch.socketTimeout:60000}")
-    public Integer socketTimeout;
+    public ElasticsearchAutoConfiguration(ElasticsearchProperties properties) {
+        this.properties = properties;
+    }
 
     /**
      * create the API client
@@ -59,18 +52,37 @@ public class ElasticsearchAutoConfiguration {
     @Bean("esClient")
     @Primary
     public ElasticsearchClient client() {
-        RestClientBuilder builder = RestClient.builder(new HttpHost(host, port));
-        if (!Objects.equals(DEFAULT_STR, username) && !Objects.equals(DEFAULT_STR, password)) {
+        if (StringUtils.isEmpty(properties.getVersion())) {
+            throw new IllegalArgumentException("elasticsearch.version 不能为空");
+        }
+        if (StringUtils.isEmpty(properties.getHost())) {
+            throw new IllegalArgumentException("elasticsearch.host 不能为空");
+        }
+
+        log.info("创建 Elasticsearch 客户端，版本: {}, host: {}, port: {}", 
+                properties.getVersion(), properties.getHost(), properties.getPort());
+        RestClientBuilder builder = RestClient.builder(new HttpHost(properties.getHost(), properties.getPort()));
+        
+        // 配置认证
+        if (StringUtils.hasText(properties.getUsername()) && StringUtils.hasText(properties.getPassword())
+                && !Objects.equals(DEFAULT_STR, properties.getUsername()) 
+                && !Objects.equals(DEFAULT_STR, properties.getPassword())) {
             //参见elasticsearch的基本认证 https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/master/_basic_authentication.html
             CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-            credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+            credentialsProvider.setCredentials(AuthScope.ANY, 
+                    new UsernamePasswordCredentials(properties.getUsername(), properties.getPassword()));
             builder.setHttpClientConfigCallback(httpClientBuilder -> {
                 httpClientBuilder.disableAuthCaching();
-                return httpClientBuilder
-                        .setDefaultCredentialsProvider(credentialsProvider);
+                return httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             });
+            log.debug("已配置 Elasticsearch 基本认证");
         }
-        builder.setRequestConfigCallback(builder1 -> builder1.setConnectTimeout(connectTimeout).setSocketTimeout(socketTimeout));
+        
+        // 配置超时
+        builder.setRequestConfigCallback(builder1 -> builder1
+                .setConnectTimeout(properties.getConnectTimeout())
+                .setSocketTimeout(properties.getSocketTimeout()));
+        
         RestClient restClient = builder.build();
         ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
         //elasticsearch 客户端

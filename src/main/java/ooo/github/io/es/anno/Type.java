@@ -16,7 +16,7 @@ public @interface Type {
 
     String copyTo() default "";
 
-    Class clazz() default Object.class;
+    Class<?> clazz() default Object.class;
 
     String analyzer() default "";
 
