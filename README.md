@@ -281,7 +281,7 @@ Map<Object, Long> aggregationResult = SearchResponseUtil.readStreamTypeAggregati
 
 1. **封装原生 API**：`ElasticsearchService` 封装 Elasticsearch Java API Client 原生方法，入参和出参均为原生类型，提供统一的日志记录
 2. **简化操作层**：`ElasticsearchSimpleService` 对 `ElasticsearchService` 进行二次封装，提供更简洁的 API，降低使用门槛
-3. **动态生效**：通过 `@ConditionalOnExpression` 根据配置参数动态决定是否启用 Starter
+3. **动态生效**：通过 `@ConditionalOnProperty(name = "elasticsearch.version")` 根据配置参数动态决定是否启用 Starter
 4. **注解驱动**：通过自定义注解简化索引和文档的配置
 
 ### UML 类图
