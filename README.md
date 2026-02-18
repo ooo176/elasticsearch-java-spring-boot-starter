@@ -12,17 +12,6 @@
 
 一个基于 Elasticsearch Java API Client 7.17.7 的 Spring Boot Starter，提供简单易用的 Elasticsearch 操作封装，支持索引管理、文档 CRUD、搜索查询、聚合统计等功能。
 
-## 📋 目录
-
-- [特性](#特性)
-- [依赖版本](#依赖版本)
-- [快速开始](#快速开始)
-- [配置说明](#配置说明)
-- [使用指南](#使用指南)
-- [架构设计](#架构设计)
-- [常见问题](#常见问题)
-- [开发计划](#开发计划)
-
 ## ✨ 特性
 
 - 🚀 **开箱即用**：通过配置 `elasticsearch.version` 参数动态生效，无需额外配置
@@ -454,17 +443,6 @@ PUT /my_index/_settings
 ---
 
 A Spring Boot Starter based on Elasticsearch Java API Client 7.17.7, providing simple and easy-to-use Elasticsearch operation encapsulation, supporting index management, document CRUD, search queries, aggregation statistics, and more.
-
-## 📋 Table of Contents
-
-- [Features](#features)
-- [Dependencies](#dependencies)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [Usage Guide](#usage-guide)
-- [Architecture](#architecture)
-- [FAQ](#faq)
-- [Development Plan](#development-plan)
 
 ## ✨ Features
 
