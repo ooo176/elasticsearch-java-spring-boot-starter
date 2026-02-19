@@ -149,11 +149,15 @@ public class MyDocument {
     private String id;
     
     // text type for full-text search, with keyword subfield for exact matching and sorting
+    // Indexing with ik_max_word (fine-grained tokenization for maximum matching), 
+    // searching with ik_smart (coarse-grained tokenization for better precision)
     @Type(type = {"text", "keyword"}, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
     private String title;
     
-    // text type with default analyzer
-    @Type(type = {"text"})
+    // text type with best practice: different analyzers for indexing and searching
+    // analyzer: indexing analyzer, using ik_max_word for fine-grained tokenization to ensure no missed results
+    // searchAnalyzer: search analyzer, using ik_smart for coarse-grained tokenization to improve search precision
+    @Type(type = {"text"}, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
     private String content;
     
     // keyword type for exact matching
@@ -215,6 +219,27 @@ public class MyDocument {
 | `dims` | `int` | `128` | Vector dimensions | `dense_vector` |
 | `relations` | `String` | `""` | Parent-child relations, format: `parent:child1,child2` or `parent1:child1;parent2:child2` | `join` |
 | `ignoreAbove` | `int` | `0` | Values exceeding this length won't be indexed (0 means use default 256) | `keyword` |
+
+#### Analyzer Best Practices
+
+**Recommended Approach: Use Different Analyzers for Indexing and Searching**
+
+In practical applications, a widely recommended and effective practice is: **use different analyzers for indexing and searching**.
+
+- **Indexing with `ik_max_word`**: When building indexes, use `ik_max_word` to perform the finest-grained tokenization on text. This ensures that data can be matched as much as possible, **maximizing search result coverage**.
+- **Searching with `ik_smart`**: When users input keywords for searching, use `ik_smart` to perform coarse-grained tokenization on query terms. This breaks queries into fewer, longer terms with more focused matching conditions, **helping improve search result precision**.
+
+**Usage Example:**
+
+```java
+// Use ik_max_word for indexing, ik_smart for searching
+@Type(type = {"text"}, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+private String content;
+
+// Scenario supporting both full-text search and exact matching
+@Type(type = {"text", "keyword"}, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+private String title;
+```
 
 #### Supported Data Types
 
@@ -484,7 +509,7 @@ The project provides complete unit test cases based on JUnit. Before running tes
 ## 📝 Development Plan
 
 - [ ] Support more Elasticsearch versions (8.x)
-- [ ] Enhance `TypeMappingBuilder` to support more field types
+- [x] Enhance `TypeMappingBuilder` to support more field types
 - [ ] Optimize `HighlightUtil` to support recursive parent class property retrieval
 - [ ] Add more convenient methods for aggregation types
 - [ ] Support bulk update operations
