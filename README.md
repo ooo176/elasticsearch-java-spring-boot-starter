@@ -148,15 +148,96 @@ public class MyDocument {
     @Id
     private String id;
     
-    @Type(type = {"text", "keyword"})
+    // text 类型，支持全文搜索，同时添加 keyword 子字段用于精确匹配和排序
+    @Type(type = {"text", "keyword"}, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
     private String title;
     
+    // text 类型，使用默认分词器
     @Type(type = {"text"})
     private String content;
+    
+    // keyword 类型，用于精确匹配
+    @Type(type = {"keyword"}, ignoreAbove = 256)
+    private String email;
+    
+    // 数值类型
+    @Type(type = {"integer"})
+    private Integer age;
+    
+    @Type(type = {"double"})
+    private Double price;
+    
+    // scaled_float 类型，用于精确的小数存储（如价格、评分）
+    @Type(type = {"scaled_float"}, scalingFactor = 100.0)
+    private Double rating;
+    
+    // 日期类型，支持多种格式
+    @Type(type = {"date"}, format = "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis")
+    private Date createdAt;
+    
+    // 布尔类型
+    @Type(type = {"boolean"})
+    private Boolean isPublished;
+    
+    // IP 地址类型
+    @Type(type = {"ip"})
+    private String ipAddress;
+    
+    // 地理坐标点
+    @Type(type = {"geo_point"})
+    private String location;
+    
+    // dense_vector 类型，用于向量搜索
+    @Type(type = {"dense_vector"}, dims = 128)
+    private float[] embedding;
+    
+    // join 类型，建立父子文档关系
+    @Type(type = {"join"}, relations = "question:answer")
+    private String joinField;
+    
+    // token_count 类型，统计词条数量
+    @Type(type = {"token_count"}, analyzer = "standard")
+    private Integer wordCount;
     
     // getters and setters
 }
 ```
+
+#### @Type 注解参数说明
+
+| 参数 | 类型 | 默认值 | 说明 | 适用类型 |
+|------|------|--------|------|----------|
+| `type` | `String[]` | `{"text", "keyword"}` | 字段类型，第一个为主类型，其他作为多字段 | 所有类型 |
+| `analyzer` | `String` | `""` | 分词器，用于索引时分词 | `text`, `token_count` |
+| `searchAnalyzer` | `String` | `""` | 搜索分词器，用于查询时分词 | `text` |
+| `format` | `String` | `""` | 日期格式，如 `yyyy-MM-dd HH:mm:ss\|epoch_millis` | `date` |
+| `scalingFactor` | `double` | `1.0` | 缩放因子，实际值 × scalingFactor 后存储 | `scaled_float` |
+| `dims` | `int` | `128` | 向量维度 | `dense_vector` |
+| `relations` | `String` | `""` | 父子关系，格式：`parent:child1,child2` 或 `parent1:child1;parent2:child2` | `join` |
+| `ignoreAbove` | `int` | `0` | 超过指定字符数的值不会被索引（0 表示使用默认值 256） | `keyword` |
+
+#### 支持的数据类型
+
+**文本类型：**
+- `text` - 全文搜索字段，会被分词
+- `keyword` - 精确匹配字段，不分词
+- `search_as_you_type` - 输入即搜索
+
+**数值类型：**
+- `long`, `integer`, `short`, `byte` - 整数类型
+- `double`, `float`, `half_float`, `scaled_float` - 浮点数类型
+
+**其他类型：**
+- `boolean` - 布尔值
+- `date` - 日期时间
+- `object`, `nested` - 对象和嵌套类型
+- `geo_point`, `geo_shape` - 地理类型
+- `ip` - IP 地址
+- `completion` - 自动补全
+- `token_count` - 词条计数
+- `join` - 父子关系
+- `dense_vector`, `sparse_vector` - 向量类型
+- `rank_feature`, `rank_features` - 排名特征
 
 ### 索引操作
 

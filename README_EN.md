@@ -148,15 +148,96 @@ public class MyDocument {
     @Id
     private String id;
     
-    @Type(type = {"text", "keyword"})
+    // text type for full-text search, with keyword subfield for exact matching and sorting
+    @Type(type = {"text", "keyword"}, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
     private String title;
     
+    // text type with default analyzer
     @Type(type = {"text"})
     private String content;
+    
+    // keyword type for exact matching
+    @Type(type = {"keyword"}, ignoreAbove = 256)
+    private String email;
+    
+    // Numeric types
+    @Type(type = {"integer"})
+    private Integer age;
+    
+    @Type(type = {"double"})
+    private Double price;
+    
+    // scaled_float type for precise decimal storage (e.g., prices, ratings)
+    @Type(type = {"scaled_float"}, scalingFactor = 100.0)
+    private Double rating;
+    
+    // date type with multiple formats
+    @Type(type = {"date"}, format = "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis")
+    private Date createdAt;
+    
+    // boolean type
+    @Type(type = {"boolean"})
+    private Boolean isPublished;
+    
+    // IP address type
+    @Type(type = {"ip"})
+    private String ipAddress;
+    
+    // Geo point type
+    @Type(type = {"geo_point"})
+    private String location;
+    
+    // dense_vector type for vector search
+    @Type(type = {"dense_vector"}, dims = 128)
+    private float[] embedding;
+    
+    // join type for parent-child document relationships
+    @Type(type = {"join"}, relations = "question:answer")
+    private String joinField;
+    
+    // token_count type for counting tokens
+    @Type(type = {"token_count"}, analyzer = "standard")
+    private Integer wordCount;
     
     // getters and setters
 }
 ```
+
+#### @Type Annotation Parameters
+
+| Parameter | Type | Default | Description | Applicable Types |
+|-----------|------|---------|-------------|------------------|
+| `type` | `String[]` | `{"text", "keyword"}` | Field type, first is primary type, others as multi-fields | All types |
+| `analyzer` | `String` | `""` | Analyzer for indexing | `text`, `token_count` |
+| `searchAnalyzer` | `String` | `""` | Analyzer for searching | `text` |
+| `format` | `String` | `""` | Date format, e.g., `yyyy-MM-dd HH:mm:ss\|epoch_millis` | `date` |
+| `scalingFactor` | `double` | `1.0` | Scaling factor, actual value × scalingFactor stored | `scaled_float` |
+| `dims` | `int` | `128` | Vector dimensions | `dense_vector` |
+| `relations` | `String` | `""` | Parent-child relations, format: `parent:child1,child2` or `parent1:child1;parent2:child2` | `join` |
+| `ignoreAbove` | `int` | `0` | Values exceeding this length won't be indexed (0 means use default 256) | `keyword` |
+
+#### Supported Data Types
+
+**Text Types:**
+- `text` - Full-text search field, will be analyzed
+- `keyword` - Exact match field, not analyzed
+- `search_as_you_type` - Search as you type
+
+**Numeric Types:**
+- `long`, `integer`, `short`, `byte` - Integer types
+- `double`, `float`, `half_float`, `scaled_float` - Floating-point types
+
+**Other Types:**
+- `boolean` - Boolean value
+- `date` - Date and time
+- `object`, `nested` - Object and nested types
+- `geo_point`, `geo_shape` - Geo types
+- `ip` - IP address
+- `completion` - Autocomplete
+- `token_count` - Token count
+- `join` - Parent-child relationship
+- `dense_vector`, `sparse_vector` - Vector types
+- `rank_feature`, `rank_features` - Rank features
 
 ### Index Operations
 
