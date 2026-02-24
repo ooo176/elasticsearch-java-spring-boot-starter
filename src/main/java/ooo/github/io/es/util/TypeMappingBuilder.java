@@ -1,6 +1,7 @@
 package ooo.github.io.es.util;
 
 import co.elastic.clients.elasticsearch._types.mapping.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
 import ooo.github.io.es.anno.Type;
 import org.springframework.util.StringUtils;
@@ -10,7 +11,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * 类型映射构建器
@@ -60,6 +60,10 @@ public class TypeMappingBuilder {
             Type esType = field.getAnnotation(Type.class);
             if (esType != null) {
                 String fieldName = field.getName();
+                JsonProperty jsonProperty = field.getAnnotation(JsonProperty.class);
+                if (jsonProperty != null && StringUtils.hasText(jsonProperty.value())) {
+                    fieldName = jsonProperty.value();
+                }
                 typeMapping(builder, fieldName, esType);
             }
         }
@@ -104,6 +108,25 @@ public class TypeMappingBuilder {
                 }
                 if (StringUtils.hasText(esType.searchAnalyzer())) {
                     textBuilder.searchAnalyzer(esType.searchAnalyzer());
+                }
+                // multi-field：例如 text + keyword => {"type":"text","fields":{"keyword":{"type":"keyword"}}}
+                if (types.length > 1) {
+                    Map<String, Property> multiFields = new HashMap<>();
+                    for (int i = 1; i < types.length; i++) {
+                        if ("keyword".equalsIgnoreCase(types[i])) {
+                            KeywordProperty.Builder keywordBuilder = new KeywordProperty.Builder();
+                            if (esType.ignoreAbove() > 0) {
+                                keywordBuilder.ignoreAbove(esType.ignoreAbove());
+                            }
+                            Property keywordProperty = new Property.Builder()
+                                    .keyword(keywordBuilder.build())
+                                    .build();
+                            multiFields.put("keyword", keywordProperty);
+                        }
+                    }
+                    if (!multiFields.isEmpty()) {
+                        textBuilder.fields(multiFields);
+                    }
                 }
                 propertyBuilder.text(textBuilder.build());
                 break;
@@ -276,20 +299,6 @@ public class TypeMappingBuilder {
 
         Property property = propertyBuilder.build();
         builder.properties(fieldName, property);
-
-        // 如果配置了多个类型，添加 keyword 作为子字段（用于 text 类型）
-        if (types.length > 1 && Objects.equals(primaryType, "text")) {
-            for (int i = 1; i < types.length; i++) {
-                if (Objects.equals(types[i], "keyword")) {
-                    // 添加 keyword 子字段
-                    Property keywordProperty = new Property.Builder()
-                            .keyword(new KeywordProperty.Builder().build())
-                            .build();
-                    builder.properties(fieldName + ".keyword", keywordProperty);
-                    log.debug("为字段 {} 添加 keyword 子字段", fieldName);
-                }
-            }
-        }
     }
 
 }

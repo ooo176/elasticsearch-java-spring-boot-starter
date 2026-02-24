@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import ooo.github.io.es.dto.DpResourceDataDocument;
 import ooo.github.io.es.dto.QyDocument;
 import ooo.github.io.es.dto.SearchInput;
 import ooo.github.io.es.service.ElasticsearchSimpleService;
@@ -42,6 +43,12 @@ public class EsSimpleServiceTest {
     public void testCreate() {
         boolean qk1 = simpleService.createIndex("qk123");
         Assert.assertEquals(qk1, Boolean.TRUE);
+    }
+
+    @org.junit.Test
+    public void testDpCreate() {
+        boolean created = simpleService.createIndex("qk111", DpResourceDataDocument.class);
+        Assert.assertEquals(created, Boolean.TRUE);
     }
 
 

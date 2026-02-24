@@ -56,7 +56,7 @@ Add to `pom.xml`:
 <dependency>
     <groupId>com.github.ooo176</groupId>
     <artifactId>spring-boot-starter-elasticsearch</artifactId>
-    <version>1.3</version>
+    <version>1.4</version>
 </dependency>
 ```
 
