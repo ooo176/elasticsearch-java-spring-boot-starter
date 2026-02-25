@@ -6,6 +6,8 @@ import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.elasticsearch.indices.ExistsRequest;
 import co.elastic.clients.elasticsearch.indices.*;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import ooo.github.io.es.exception.ElasticsearchException;
 import ooo.github.io.es.service.ElasticsearchService;
@@ -31,6 +33,20 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
     @Qualifier("esClient")
     private ElasticsearchClient client;
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private String toJson(Object source) {
+        if (source == null) {
+            return "null";
+        }
+        try {
+            return OBJECT_MAPPER.writeValueAsString(source);
+        } catch (JsonProcessingException e) {
+            log.warn("序列化对象为 JSON 时发生异常, fallback 使用 toString, 对象类型: {}", source.getClass().getName(), e);
+            return source.toString();
+        }
+    }
+
     @Override
     public CreateIndexResponse createIndex(CreateIndexRequest createIndexRequest) {
         if (createIndexRequest == null) {
@@ -41,9 +57,9 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
         }
 
         try {
-            log.debug("创建索引开始, 索引名称: {}", createIndexRequest.index());
+            log.debug("创建索引开始, 索引名称: {}, 请求体: {}", createIndexRequest.index(), toJson(createIndexRequest));
             CreateIndexResponse indexResponse = client.indices().create(createIndexRequest);
-            log.debug("创建索引成功, 索引名称: {}, 结果: {}", createIndexRequest.index(), indexResponse.acknowledged());
+            log.debug("创建索引成功, 索引名称: {}, 响应体: {}", createIndexRequest.index(), toJson(indexResponse));
             return indexResponse;
         } catch (IOException e) {
             String errorMsg = String.format("创建索引失败, 索引名称: %s", createIndexRequest.index());
@@ -66,9 +82,9 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
         }
 
         try {
-            log.debug("删除索引开始, 索引名称: {}", deleteIndexRequest.index());
+            log.debug("删除索引开始, 索引名称: {}, 请求体: {}", deleteIndexRequest.index(), toJson(deleteIndexRequest));
             DeleteIndexResponse indexResponse = client.indices().delete(deleteIndexRequest);
-            log.debug("删除索引成功, 索引名称: {}, 结果: {}", deleteIndexRequest.index(), indexResponse.acknowledged());
+            log.debug("删除索引成功, 索引名称: {}, 响应体: {}", deleteIndexRequest.index(), toJson(indexResponse));
             return indexResponse;
         } catch (IOException e) {
             String errorMsg = String.format("删除索引失败, 索引名称: %s", deleteIndexRequest.index());
@@ -91,9 +107,9 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
         }
 
         try {
-            log.debug("查询索引是否存在, 索引名称: {}", existsRequest.index());
+            log.debug("查询索引是否存在开始, 索引名称: {}, 请求体: {}", existsRequest.index(), toJson(existsRequest));
             BooleanResponse response = client.indices().exists(existsRequest);
-            log.debug("查询索引是否存在, 索引名称: {}, 结果: {}", existsRequest.index(), response.value());
+            log.debug("查询索引是否存在结束, 索引名称: {}, 响应体: {}", existsRequest.index(), toJson(response));
             return response;
         } catch (IOException e) {
             String errorMsg = String.format("查询索引是否存在失败, 索引名称: %s", existsRequest.index());
@@ -109,9 +125,10 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
         }
 
         try {
-            log.debug("批量操作开始, 索引名称: {}, 操作数量: {}", 
+            log.debug("批量操作开始, 索引名称: {}, 操作数量: {}, 请求体: {}", 
                     bulkRequest.index(), 
-                    bulkRequest.operations() != null ? bulkRequest.operations().size() : 0);
+                    bulkRequest.operations() != null ? bulkRequest.operations().size() : 0,
+                    toJson(bulkRequest));
             BulkResponse bulkResponse = client.bulk(bulkRequest);
             if (bulkResponse.errors()) {
                 List<BulkResponseItem> errorItems = bulkResponse.items().stream()
@@ -119,7 +136,7 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
                         .collect(Collectors.toList());
                 log.warn("批量操作存在错误, 错误数量: {}, 错误详情: {}", errorItems.size(), errorItems);
             } else {
-                log.debug("批量操作成功, 操作数量: {}", bulkResponse.items().size());
+                log.debug("批量操作成功, 操作数量: {}, 响应体: {}", bulkResponse.items().size(), toJson(bulkResponse));
             }
             return bulkResponse;
         } catch (IOException e) {
@@ -143,13 +160,15 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
         }
 
         try {
-            log.debug("查询ES数据开始, 索引: {}, 文档类型: {}", 
-                    request.index(), 
-                    tDocumentClass.getSimpleName());
+            log.debug("查询ES数据开始, 索引: {}, 文档类型: {}, 请求体: {}", 
+                    request.index(),
+                    tDocumentClass.getSimpleName(),
+                    toJson(request));
             SearchResponse<TDocument> response = client.search(request, tDocumentClass);
-            log.debug("查询ES数据成功, 索引: {}, 命中数量: {}", 
-                    request.index(), 
-                    response.hits().total() != null ? response.hits().total().value() : 0);
+            log.debug("查询ES数据成功, 索引: {}, 命中数量: {}, 响应体: {}", 
+                    request.index(),
+                    response.hits().total() != null ? response.hits().total().value() : 0,
+                    toJson(response));
             return response;
         } catch (IOException e) {
             String errorMsg = String.format("查询ES数据失败, 索引: %s", request.index());
@@ -172,11 +191,12 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
         }
 
         try {
-            log.debug("删除ES数据开始, 索引: {}", request.index());
+            log.debug("删除ES数据开始, 索引: {}, 请求体: {}", request.index(), toJson(request));
             DeleteByQueryResponse deleteByQuery = client.deleteByQuery(request);
-            log.debug("删除ES数据成功, 索引: {}, 删除数量: {}", 
+            log.debug("删除ES数据成功, 索引: {}, 删除数量: {}, 响应体: {}", 
                     request.index(), 
-                    deleteByQuery.deleted());
+                    deleteByQuery.deleted(),
+                    toJson(deleteByQuery));
             return deleteByQuery;
         } catch (IOException e) {
             String errorMsg = String.format("删除ES数据失败, 索引: %s", request.index());
