@@ -56,7 +56,7 @@
 <dependency>
     <groupId>com.github.ooo176</groupId>
     <artifactId>spring-boot-starter-elasticsearch</artifactId>
-    <version>1.5</version>
+    <version>1.6</version>
 </dependency>
 ```
 

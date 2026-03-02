@@ -6,8 +6,7 @@ import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.elasticsearch.indices.ExistsRequest;
 import co.elastic.clients.elasticsearch.indices.*;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import co.elastic.clients.json.JsonpMapper;
 import lombok.extern.slf4j.Slf4j;
 import ooo.github.io.es.exception.ElasticsearchException;
 import ooo.github.io.es.service.ElasticsearchService;
@@ -16,6 +15,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import jakarta.json.spi.JsonProvider;
+import jakarta.json.stream.JsonGenerator;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,16 +36,22 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
     @Qualifier("esClient")
     private ElasticsearchClient client;
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     private String toJson(Object source) {
         if (source == null) {
             return "null";
         }
         try {
-            return OBJECT_MAPPER.writeValueAsString(source);
-        } catch (JsonProcessingException e) {
-            log.warn("序列化对象为 JSON 时发生异常, fallback 使用 toString, 对象类型: {}", source.getClass().getName(), e);
+            // 使用 Elasticsearch Java Client 自带的 JsonpMapper 保证与实际请求/响应一致
+            JsonpMapper mapper = client._transport().jsonpMapper();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            JsonGenerator generator = JsonProvider.provider().createGenerator(baos);
+
+            mapper.serialize(source, generator);
+            generator.close();
+
+            return baos.toString("UTF-8");
+        } catch (Exception e) {
+            log.warn("序列化对象为 JSON 时发生异常, fallback 使用 toString, 对象类型: {}", source.getClass() != null ? source.getClass().getName() : "unknown", e);
             return source.toString();
         }
     }
