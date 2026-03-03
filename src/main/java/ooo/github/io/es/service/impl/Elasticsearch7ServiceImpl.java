@@ -7,6 +7,8 @@ import co.elastic.clients.elasticsearch.indices.ExistsRequest;
 import co.elastic.clients.elasticsearch.indices.*;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
 import co.elastic.clients.json.JsonpMapper;
+import co.elastic.clients.json.JsonpSerializable;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import lombok.extern.slf4j.Slf4j;
 import ooo.github.io.es.exception.ElasticsearchException;
 import ooo.github.io.es.service.ElasticsearchService;
@@ -20,6 +22,7 @@ import jakarta.json.stream.JsonGenerator;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,11 +44,21 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
             return "null";
         }
         try {
-            // 使用 Elasticsearch Java Client 自带的 JsonpMapper 保证与实际请求/响应一致
             JsonpMapper mapper = client._transport().jsonpMapper();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            JsonGenerator generator = JsonProvider.provider().createGenerator(baos);
+            // JacksonJsonpMapper.serialize() 要求 JsonGenerator 必须由 JacksonJsonpProvider 创建，否则抛 IllegalArgumentException
+            JsonGenerator generator = createJsonGenerator(mapper, baos);
 
+            // ES 7.17 的 Request/Response 可能未实现 JsonpSerializable 接口，但多有 serialize(JsonGenerator, JsonpMapper)，用反射调用
+            if (serializeWithJsonp(source, generator, mapper)) {
+                generator.close();
+                return baos.toString("UTF-8");
+            }
+            // ES 包内类型若没有 serialize 方法，不要交给 Jackson（会报 No serializer），直接 toString
+            if (source.getClass().getName().startsWith("co.elastic.clients.")) {
+                generator.close();
+                return source.toString();
+            }
             mapper.serialize(source, generator);
             generator.close();
 
@@ -54,6 +67,37 @@ public class Elasticsearch7ServiceImpl implements ElasticsearchService {
             log.warn("序列化对象为 JSON 时发生异常, fallback 使用 toString, 对象类型: {}", source.getClass() != null ? source.getClass().getName() : "unknown", e);
             return source.toString();
         }
+    }
+
+    /**
+     * 对 ES 客户端类型调用其 serialize(JsonGenerator, JsonpMapper) 方法（7.17 中部分类型未实现 JsonpSerializable，但方法存在）。
+     * @return true 表示已成功用 JsonP 序列化，false 表示需走 mapper.serialize
+     */
+    private static boolean serializeWithJsonp(Object source, JsonGenerator generator, JsonpMapper mapper) {
+        if (source instanceof JsonpSerializable) {
+            ((JsonpSerializable) source).serialize(generator, mapper);
+            return true;
+        }
+        try {
+            Method m = source.getClass().getMethod("serialize", JsonGenerator.class, JsonpMapper.class);
+            m.invoke(source, generator, mapper);
+            return true;
+        } catch (NoSuchMethodException e) {
+            return false;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 使用与当前 JsonpMapper 配套的 JsonProvider 创建 JsonGenerator。
+     * JacksonJsonpMapper 要求 generator 必须由其 jsonProvider() 创建，否则 serialize 会抛 IllegalArgumentException。
+     */
+    private static JsonGenerator createJsonGenerator(JsonpMapper mapper, ByteArrayOutputStream baos) {
+        if (mapper instanceof JacksonJsonpMapper) {
+            return ((JacksonJsonpMapper) mapper).jsonProvider().createGenerator(baos);
+        }
+        return JsonProvider.provider().createGenerator(baos);
     }
 
     @Override

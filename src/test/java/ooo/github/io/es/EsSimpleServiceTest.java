@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @SpringBootTest(classes = {ElasticsearchAutoConfiguration.class})
 public class EsSimpleServiceTest {
 
-    private static final String indexName = "simple_es1";
+    private static final String indexName = "aaa";
     @Autowired
     private ElasticsearchSimpleService simpleService;
 
